@@ -1,0 +1,244 @@
+
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>モリモリの森</title>
+  <style>
+    body { font-family: sans-serif; background: #e6e6fa
+; padding: 20px; }
+    .container { max-width: 900px; margin: auto; background: #ffffff; padding: 20px; border-radius: 8px; }
+    .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 10px; margin: 5px 0; font-size: 1em; }
+    .btn { padding: 10px; margin-top: 10px; background: #4CAF50; color: #fff; border: none; cursor: pointer; }
+    .post { border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 5px; }
+    .username { font-weight: bold; }
+    .red { color: red; }
+    .delete-btn { background-color: #dc3545; color: white; padding: 3px 6px; border: none; border-radius: 3px; float: right; cursor: pointer; }
+    .reply-btn { background-color: #007bff; color: white; padding: 5px; margin-top: 5px; border: none; cursor: pointer; }
+    .image-preview { max-width: 100%; margin-top: 5px; border-radius: 4px; }
+    .timestamp { font-size: 0.8em; color: #666; }
+    .genre-select { margin-top: 10px; }
+    .reply { margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>モリモリの森</h1>
+    <h5>〜モリモリの森はフリー掲示板です〜</h5>
+    <!-- 投稿フォーム -->
+    <div class="input-group">
+      <input type="text" id="username" placeholder="ユーザー名">
+      <select id="genre">
+        <option value="ニュース">ニュース</option>
+        <option value="質問">質問</option>
+        <option value="雑談">雑談</option>
+     　 <option value="エンタメ">エンタメ</option> <option value="実況">実況</option>
+      </select>
+      <textarea id="content" rows="3" placeholder="投稿内容を入力"></textarea>
+      <input type="file" id="imageInput" accept="image/*">
+      <button class="btn" onclick="addPost()">投稿</button>
+    </div>
+
+    <!-- 管理者フォーム -->
+    <div class="input-group">
+      <input type="password" id="adminPassword" placeholder="管理者パスワード">
+      <button class="btn" onclick="loginAdmin()">管理者ログイン</button>
+    </div>
+
+    <!-- ジャンル選択 -->
+    <div class="genre-select">
+      表示ジャンル:
+      <select id="filterGenre" onchange="renderPosts()">
+        <option value="すべて">すべて</option>
+        <option value="ニュース">ニュース</option>
+        <option value="質問">質問</option>
+        <option value="雑談">雑談</option>
+        <option value="エンタメ">エンタメ</option>
+        <option value="実況">実況</option>
+      </select>
+    </div>
+
+    <!-- 投稿一覧 -->
+    <div id="posts"></div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "admin123";
+    let isAdmin = false;
+    let posts = [];
+
+    function loginAdmin() {
+      const pw = document.getElementById("adminPassword").value;
+      if (pw === ADMIN_PASSWORD) {
+        isAdmin = true;
+        alert("管理者としてログインしました");
+        renderPosts();
+      } else {
+        alert("パスワードが違います");
+      }
+    }
+
+    function addPost(parentId = null) {
+      const username = document.getElementById("username").value.trim();
+      const content = document.getElementById("content").value.trim();
+      const genre = document.getElementById("genre").value;
+      const imageInput = document.getElementById("imageInput");
+      const imageFile = imageInput.files[0];
+
+      if (!username || !content) {
+        alert("ユーザー名と投稿内容を入力してください。");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const post = {
+          id: Date.now(),
+          username,
+          content,
+          parentId,
+          genre,
+          replies: [],
+          image: imageFile ? e.target.result : null,
+          timestamp: new Date().toLocaleString(),
+          owner: username
+        };
+
+        if (parentId) {
+          const parent = findPostById(parentId);
+          parent.replies.push(post);
+        } else {
+          posts.push(post);
+        }
+
+        document.getElementById("content").value = "";
+        imageInput.value = "";
+        renderPosts();
+      };
+
+      if (imageFile) {
+        reader.readAsDataURL(imageFile);
+      } else {
+        reader.onload({ target: { result: null } });
+      }
+    }
+
+    function replyTo(postId) {
+      const replyUsername = prompt("ユーザー名を入力:");
+      if (!replyUsername) return;
+
+      const replyContent = prompt("返信内容を入力:");
+      if (!replyContent) return;
+
+      const imageInput = document.createElement("input");
+      imageInput.type = "file";
+      imageInput.accept = "image/*";
+      imageInput.onchange = function () {
+        const file = imageInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const reply = {
+            id: Date.now(),
+            username: replyUsername,
+            content: replyContent,
+            parentId: postId,
+            genre: null,
+            replies: [],
+            image: file ? e.target.result : null,
+            timestamp: new Date().toLocaleString(),
+            owner: replyUsername
+          };
+          const parentPost = findPostById(postId);
+          parentPost.replies.push(reply);
+          renderPosts();
+        };
+        if (file) {
+          reader.readAsDataURL(file);
+        } else {
+          reader.onload({ target: { result: null } });
+        }
+      };
+      imageInput.click();
+    }
+
+    function findPostById(id, list = posts) {
+      for (let post of list) {
+        if (post.id === id) return post;
+        const found = findPostById(id, post.replies);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function deletePost(id) {
+      const username = document.getElementById("username").value.trim();
+      if (!username && !isAdmin) {
+        alert("ユーザー名を入力してください。");
+        return;
+      }
+
+      function removePost(list) {
+        return list.filter(post => {
+          if (post.id === id) {
+            if (post.owner === username || isAdmin) return false;
+            alert("削除できません。");
+            return true;
+          }
+          post.replies = removePost(post.replies);
+          return true;
+        });
+      }
+
+      posts = removePost(posts);
+      renderPosts();
+    }
+
+    function renderPosts() {
+      const container = document.getElementById("posts");
+      container.innerHTML = "";
+      const filter = document.getElementById("filterGenre").value;
+
+      function render(post, depth = 0) {
+        if (post.parentId === null && (filter === "すべて" || post.genre === filter)) {
+          const div = createPostElement(post, depth);
+          container.appendChild(div);
+        }
+      }
+
+      posts.forEach(post => render(post));
+    }
+
+    function createPostElement(post, depth) {
+      const div = document.createElement("div");
+      div.className = "post";
+      div.style.marginLeft = `${depth * 20}px`;
+
+      const usernameClass = isAdmin ? "username red" : "username";
+      div.innerHTML = `
+        <div>
+          <span class="${usernameClass}">${post.username}</span>
+          <button class="delete-btn" onclick="deletePost(${post.id})">削除</button>
+        </div>
+        <div class="timestamp">${post.timestamp}</div>
+        ${post.genre ? `<div><strong>ジャンル:</strong> ${post.genre}</div>` : ""}
+        <p>${post.content}</p>
+        ${post.image ? `<img src="${post.image}" class="image-preview">` : ""}
+        <button class="reply-btn" onclick="replyTo(${post.id})">返信</button>
+      `;
+
+      post.replies.forEach(reply => {
+        const replyDiv = createPostElement(reply, depth + 1);
+        div.appendChild(replyDiv);
+      });
+
+      return div;
+    }
+
+    renderPosts();
+  </script>
+  
+  🌳モリモリの森のご利用はご利用者各位にお任せいたします🌳　　　　　　　　　
+  <p>無断転載OK　コピーOK　    　2025.5 モリモリの森®️</p>
+ 
+  
+</body>
+</html>
