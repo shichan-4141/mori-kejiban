@@ -1,0 +1,68 @@
+let visiblePosts = posts.filter(post =>
+  post.parentId === null &&
+  (filter === "すべて" || post.genre === filter) &&
+  (isAdmin || !post.reported) &&
+  (post.content.toLowerCase().includes(query) || post.username.toLowerCase().includes(query))
+);
+post.replies.forEach(reply => {
+  if (!reply.reported || isAdmin) {
+    const replyDiv = createPostElement(reply, depth + 1);
+    div.appendChild(replyDiv);
+  }
+});
+post.replies.forEach(reply => {
+  if (!reply.reported || isAdmin) {
+    const replyDiv = createPostElement(reply, depth + 1);
+    div.appendChild(replyDiv);
+  }
+});
+function loginAdmin() {
+  const pw = document.getElementById("adminPassword").value;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    alert("管理者としてログインしました");
+    renderPosts();  // ✅ 通報済み投稿を再描画
+  } else {
+    alert("パスワードが違います");
+  }
+}
+
+function talkToBot() {
+  const input = document.getElementById("bot-input").value.toLowerCase();
+  const message = document.getElementById("bot-message");
+
+  if (input.includes("疲") || input.includes("つかれ")) {
+    message.textContent = "よしよし…どんぐりあげるね🌰";
+  } else if (input.includes("こんにちは")) {
+    message.textContent = "こんにちは！今日は森も元気だよ🌳";
+  } else if (input.includes("さみしい")) {
+    message.textContent = "リスくんがそばにいるよ🐿️";
+  } else {
+    message.textContent = "うーん？むずかしい言葉だね！";
+  }
+
+  document.getElementById("bot-input").value = "";
+}
+
+// 投稿時の仲間キャラ＋占い
+function generateForestMessage() {
+  const animals = [
+    "タヌキさん：ほっこりする投稿だね〜🍵",
+    "リスくん：どんぐり話かな？🌰",
+    "フクロウさん：知恵ある発言だ🦉",
+    "キツネちゃん：ちょっとイタズラ心ありそう？🦊"
+  ];
+  const fortunes = [
+    "モリモリ運勢：90点！ラッキーアイテムはどんぐり！",
+    "モリモリ運勢：70点！深呼吸して森の風を感じよう。",
+    "モリモリ運勢：100点！森の精霊が味方してる！",
+    "モリモリ運勢：50点…でも笑顔で運気アップ🌞"
+  ];
+  const message =
+    animals[Math.floor(Math.random() * animals.length)] +
+    "\n" +
+    fortunes[Math.floor(Math.random() * fortunes.length)];
+
+  alert(message); // またはHTML要素に表示してもOK
+}
+generateForestMessage();
